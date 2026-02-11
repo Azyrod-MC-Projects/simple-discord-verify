@@ -3,6 +3,7 @@ package com.azyrod.rpa_whitelist;
 import com.azyrod.rpa_whitelist.Discord.CommandRegistrar;
 import com.azyrod.rpa_whitelist.config.DiscordUserCache;
 import com.azyrod.rpa_whitelist.config.ModConfig;
+import com.mojang.authlib.GameProfile;
 import discord4j.common.util.Snowflake;
 import discord4j.core.DiscordClient;
 import discord4j.core.GatewayDiscordClient;
@@ -17,7 +18,6 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.gamerule.v1.GameRuleFactory;
 import net.fabricmc.fabric.api.gamerule.v1.GameRuleRegistry;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.PlayerConfigEntry;
 import net.minecraft.server.ServerConfigHandler;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
@@ -208,8 +208,8 @@ public class RPAWhitelist implements DedicatedServerModInitializer {
         }).block());
     }
 
-    public Text makeNotVerifiedMessage(@NotNull PlayerConfigEntry profile) {
-        UUID uuid = profile.id();
+    public Text makeNotVerifiedMessage(@NotNull GameProfile profile) {
+        UUID uuid = profile.getId();
         Integer code = loginCodeMap.get(uuid);
 
         if (code == null) {
@@ -233,7 +233,7 @@ public class RPAWhitelist implements DedicatedServerModInitializer {
                     Please use the following Discord command for the bot to verify your account.
                 """
         ).styled(style -> style.withFormatting(Formatting.RESET));
-        String command = "/rpa_verify %s %s %s".formatted(config.values.server_config().server_name(), profile.name(), code);
+        String command = "/rpa_verify %s %s %s".formatted(config.values.server_config().server_name(), profile.getName(), code);
         Text link = Text.literal(command).styled((style) -> style.withFormatting(Formatting.BLUE));
 
         MutableText channel = Text.literal("Please use this command in ")
