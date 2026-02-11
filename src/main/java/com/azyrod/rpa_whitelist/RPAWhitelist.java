@@ -14,18 +14,15 @@ import discord4j.core.spec.InteractionFollowupCreateMono;
 import net.fabricmc.api.DedicatedServerModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.gamerule.v1.GameRuleFactory;
-import net.fabricmc.fabric.api.gamerule.v1.GameRuleRegistry;
+import net.fabricmc.fabric.api.gamerule.v1.GameRuleBuilder;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.PlayerConfigEntry;
 import net.minecraft.server.ServerConfigHandler;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
-import net.minecraft.util.Colors;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Util;
-import net.minecraft.util.WorldSavePath;
-import net.minecraft.world.GameRules;
+import net.minecraft.util.*;
+import net.minecraft.world.rule.GameRule;
+import net.minecraft.world.rule.GameRuleCategory;
 import org.jetbrains.annotations.NotNull;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
@@ -60,7 +57,8 @@ public class RPAWhitelist implements DedicatedServerModInitializer {
     public GatewayDiscordClient gateway;
     public Guild guild;
 
-    public static GameRules.Key<GameRules.BooleanRule> DISCORD_VERIFY_ENABLED;
+    public static final Identifier DISCORD_VERIFY_ENABLED_IDENTIFIER = Identifier.of("rpa_verify", "discord_verify_enabled");
+    public static final GameRule<Boolean> DISCORD_VERIFY_ENABLED = GameRuleBuilder.forBoolean(true).category(GameRuleCategory.PLAYER).buildAndRegister(DISCORD_VERIFY_ENABLED_IDENTIFIER);
 
     @Override
     public void onInitializeServer() {
@@ -70,13 +68,11 @@ public class RPAWhitelist implements DedicatedServerModInitializer {
         });
         ServerTickEvents.END_SERVER_TICK.register(this::onServerTick);
 
-        DISCORD_VERIFY_ENABLED = GameRuleRegistry.register("discordVerifyEnabled", GameRules.Category.PLAYER, GameRuleFactory.createBooleanRule(true));
-
         refresh();
     }
 
     public boolean isDisabled() {
-        return !minecraftServer.getGameRules().get(DISCORD_VERIFY_ENABLED).get();
+        return !minecraftServer.getSaveProperties().getGameRules().getValue(DISCORD_VERIFY_ENABLED);
     }
 
     public synchronized void refresh() {
