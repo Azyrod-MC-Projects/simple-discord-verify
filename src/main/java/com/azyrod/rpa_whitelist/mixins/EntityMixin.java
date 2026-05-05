@@ -20,7 +20,7 @@ import java.util.Map;
 public abstract class EntityMixin {
     @Unique
     private static final Map<String, Snowflake> tag_role_map = new ImmutableMap.Builder<String, Snowflake>()
-            .put("test", Snowflake.of(1086077236211359915L))
+ //           .put("test", Snowflake.of(1086077236211359915L))
             .build();
 
     @Unique
@@ -30,7 +30,7 @@ public abstract class EntityMixin {
         if ((Object)this instanceof PlayerEntity player) {
             Snowflake player_id = rpa.usercache.get(player.getUuid());
             if (player_id == null) {
-                RPAWhitelist.LOGGER.error("Couldn't get Discord ID for Player '{}' - NOT SUPPOSED TO HAPPEN (Or player is OP and didn't register)", player.getUuid());
+                RPAWhitelist.LOGGER.error("Couldn't get Discord ID for Player '{}' - NOT SUPPOSED TO HAPPEN (Or player is OP and didn't verify)", player.getUuid());
                 return;
             }
 

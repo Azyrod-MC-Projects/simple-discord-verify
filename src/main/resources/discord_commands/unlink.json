@@ -1,5 +1,5 @@
 {
-  "name": "rpa_unlink",
+  "name": "unlink",
   "description": "Un-Links your Discord account from your Minecraft one",
   "options": [
     {

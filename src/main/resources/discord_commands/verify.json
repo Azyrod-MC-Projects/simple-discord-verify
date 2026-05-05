@@ -1,5 +1,5 @@
 {
-  "name": "rpa_verify",
+  "name": "verify",
   "description": "Links your Discord account to MC so you can login to the server",
   "options": [
     {

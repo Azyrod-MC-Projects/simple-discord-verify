@@ -1,9 +1,11 @@
-# RPA Verify Configuration
+# Simple Discord Verify Configuration
 
 # REQUIRED: The mod needs a discord bot, please create one on the Discord Developer Portal and insert the token here
 discord_bot_token: ""
 # REQUIRED: The ID of the Discord server the bot should operate on.
 discord_server_id:
+# The prefix of the discord command (default: "sdv_")
+discord_commands_prefix: "sdv_"
 
 server_config:
   # REQUIRED: The names of the different servers that you offer to your Discord members.
@@ -26,3 +28,47 @@ whitelist_config:
   disallowed_discord_roles:
   #  - 12345
   #  - 67890
+
+messages:
+  minecraft:
+    not_verified:
+      - text: "Your Discord Account has not been verified yet!\n\n"
+        style:
+          bold: true
+          color: "white"
+      - text: |
+          Before you can join our Minecraft Server, we need to verify you have been granted access.
+          Access is given on Discord, so we will need to verify your Discord account.
+          Please use the following Discord command for the bot to verify your account :
+      - text: "\n#{VERIFY_COMMAND_TEXT}\n\n"
+        style:
+          color: "blue"
+      - text: "Please use this command in "
+      - text: "#bot-commands"
+        style:
+          color: "#57FFE1"
+    missing_role:
+      - text: "You do not have the required role to join the Minecraft Server !\n\n"
+        style:
+          bold: true
+          color: "dark_red"
+      - text: |
+          In order to play on our Minecraft Server, you need to be given access via Discord.
+          Please refer to the How To Apply channel for more information.
+    pending_verification:
+      - text: "Your Discord Role is being verified.\n\n"
+        style:
+          bold: true
+          color: "dark_aqua"
+      - text: "Please wait a couple seconds and try again."
+  discord:
+    unlink:
+      success: "Your Discord account has been unlinked from your Minecraft account successfully."
+      not_linked: "Your Discord account was not linked to any Minecraft account."
+    verify:
+      success: "Access to the Minecraft Server granted !"
+      missing_role: "You do not have the required role to join the Minecraft Server.\nPlease refer to the How To Apply channel for more information."
+      restarting: "Minecraft Server is restarting - please wait a couple minutes"
+      login_missing: "Please login on the Minecraft Server once to generate a login code."
+      invalid_login: "Invalid login code. Please login on the Minecraft Server to receive your personal code."
+      too_many_invalid_login: "Too many invalid login attempts. Please login on the Minecraft Server to generate a new login code."
