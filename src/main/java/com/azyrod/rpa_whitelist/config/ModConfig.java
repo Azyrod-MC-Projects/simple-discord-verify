@@ -7,11 +7,10 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.text.MutableText;
-import net.minecraft.text.Style;
-import net.minecraft.text.Text;
-import net.minecraft.text.TextColor;
-import net.minecraft.util.Colors;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TextColor;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -178,7 +177,7 @@ public class ModConfig {
         @JsonProperty(required = true) public WhitelistConfig whitelist_config;
         @JsonProperty(required = true) public ServerConfig server_config;
         @JsonProperty(defaultValue = "sdv_") public String discord_commands_prefix;
-        @JsonProperty(defaultValue = "true") public Boolean inactive_role_logic;
+        @JsonProperty(defaultValue = "true") public Boolean inactive_role_logic = false;
         @JsonProperty(defaultValue = "true") public Messages messages;
     }
 
@@ -211,36 +210,36 @@ public class ModConfig {
         @JsonProperty(defaultValue = "true") public ArrayList<MinecraftText> missing_role;
         @JsonProperty(defaultValue = "true") public ArrayList<MinecraftText> pending_verification;
 
-        private Text not_verified_text;
-        private Text missing_role_text;
-        private Text pending_verification_text;
+        private Component not_verified_text;
+        private Component missing_role_text;
+        private Component pending_verification_text;
 
-        public Text getNotVerifiedText() {
+        public Component getNotVerifiedText() {
             if (not_verified_text == null) {
                 not_verified_text = makeText(not_verified);
             }
             return not_verified_text;
         }
 
-        public Text getMissingRoleText() {
+        public Component getMissingRoleText() {
             if (missing_role_text == null) {
                 missing_role_text = makeText(missing_role);
             }
             return missing_role_text;
         }
 
-        public Text getPendingVerificationText() {
+        public Component getPendingVerificationText() {
             if (pending_verification_text == null) {
                 pending_verification_text = makeText(pending_verification);
             }
             return pending_verification_text;
         }
 
-        private Text makeText(ArrayList<MinecraftText> message) {
-            MutableText text = Text.empty();
+        private Component makeText(ArrayList<MinecraftText> message) {
+            MutableComponent text = Component.empty();
 
             message.forEach(mc_text -> {
-                text.append(Text.literal(mc_text.text).setStyle(mc_text.style.getComputedStyle()));
+                text.append(Component.literal(mc_text.text).setStyle(mc_text.style.getComputedStyle()));
             });
 
             return text;
@@ -274,13 +273,13 @@ public class ModConfig {
 
         @JsonProperty("color")
         public void setColor(String color) {
-            this.color = TextColor.parse(color).result().orElse(null);
+            this.color = TextColor.parseColor(color).result().orElse(null);
         }
 
         public Style getComputedStyle() {
             if (computedStyle == null) {
                 computedStyle = Style.EMPTY.withColor(color).withBold(bold).withItalic(italic)
-                                     .withUnderline(underlined).withStrikethrough(strikethrough);
+                                     .withUnderlined(underlined).withStrikethrough(strikethrough);
             }
             return computedStyle;
         }

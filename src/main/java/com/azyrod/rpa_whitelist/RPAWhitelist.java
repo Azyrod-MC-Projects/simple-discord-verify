@@ -15,14 +15,16 @@ import net.fabricmc.api.DedicatedServerModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.gamerule.v1.GameRuleBuilder;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.PlayerConfigEntry;
-import net.minecraft.server.ServerConfigHandler;
-import net.minecraft.text.MutableText;
-import net.minecraft.text.Text;
+import net.minecraft.server.players.NameAndId;
+import net.minecraft.server.players.OldUsersConverter;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Component;
 import net.minecraft.util.*;
-import net.minecraft.world.rule.GameRule;
-import net.minecraft.world.rule.GameRuleCategory;
+import net.minecraft.world.level.gamerules.GameRule;
+import net.minecraft.world.level.gamerules.GameRuleCategory;
+import net.minecraft.world.level.storage.LevelResource;
 import org.jetbrains.annotations.NotNull;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
@@ -60,7 +62,7 @@ public class RPAWhitelist implements DedicatedServerModInitializer {
     public GatewayDiscordClient gateway;
     public Guild guild;
 
-    public static final Identifier DISCORD_VERIFY_ENABLED_IDENTIFIER = Identifier.of("simple_discord_verify", "discord_verify_enabled");
+    public static final Identifier DISCORD_VERIFY_ENABLED_IDENTIFIER = Identifier.fromNamespaceAndPath("simple_discord_verify", "discord_verify_enabled");
     public static final GameRule<Boolean> DISCORD_VERIFY_ENABLED = GameRuleBuilder.forBoolean(true).category(GameRuleCategory.PLAYER).buildAndRegister(DISCORD_VERIFY_ENABLED_IDENTIFIER);
 
     @Override
@@ -73,7 +75,7 @@ public class RPAWhitelist implements DedicatedServerModInitializer {
     }
 
     public boolean isDisabled() {
-        return !minecraftServer.getSaveProperties().getGameRules().getValue(DISCORD_VERIFY_ENABLED);
+        return !minecraftServer.getGameRules().get(DISCORD_VERIFY_ENABLED);
     }
 
     public synchronized void refresh() {
@@ -94,7 +96,7 @@ public class RPAWhitelist implements DedicatedServerModInitializer {
     }
 
     private void onServerTick(MinecraftServer server) {
-        if (config.values.inactive_role_logic && server.getTicks() % (20 * 60 * 30) == 0) {
+        if (config.values.inactive_role_logic && server.getTickCount() % (20 * 60 * 30) == 0) {
             checkPlayersLastPlayedAt();
         }
     }
@@ -102,8 +104,8 @@ public class RPAWhitelist implements DedicatedServerModInitializer {
     private void checkPlayersLastPlayedAt() {
         if (isDisabled() || config.isIncomplete())
             return;
-        try (var stream = Files.list(this.minecraftServer.getSavePath(WorldSavePath.PLAYERDATA))) {
-            long epoch = Util.getEpochTimeMs();
+        try (var stream = Files.list(this.minecraftServer.getWorldPath(LevelResource.PLAYER_DATA_DIR))) {
+            long epoch = Util.getEpochMillis();
 
             stream.forEach(path -> {
                 Path filename = path.getFileName();
@@ -230,7 +232,7 @@ public class RPAWhitelist implements DedicatedServerModInitializer {
                 whitelist_config.allowed_discord_roles.stream().anyMatch(roles::contains);
     }
 
-    public Text makeNotVerifiedMessage(@NotNull PlayerConfigEntry profile) {
+    public Component makeNotVerifiedMessage(@NotNull NameAndId profile) {
         UUID uuid = profile.id();
         LoginCode loginCode = loginCodeMap.get(uuid);
 
@@ -248,13 +250,13 @@ public class RPAWhitelist implements DedicatedServerModInitializer {
         }
         String command = "/%s %s %s %s".formatted(CommandRegistrar.makeCommandName("verify", config), config.values.server_config.server_name, profile.name(), loginCode.code);
 
-        MutableText text = config.values.messages.minecraft.getNotVerifiedText().copy();
+        MutableComponent text = config.values.messages.minecraft.getNotVerifiedText().copy();
         text.getSiblings().replaceAll((sibling) -> {
-            String content = sibling.getContent().visit(Optional::of).orElse(null);
+            String content = sibling.getContents().visit(Optional::of).orElse(null);
             if (content == null || !content.contains("#{VERIFY_COMMAND_TEXT}")) {
                 return sibling; // no modifications
             }
-            MutableText tmp = Text.literal(content.replace("#{VERIFY_COMMAND_TEXT}", command)).setStyle(sibling.getStyle());
+            MutableComponent tmp = Component.literal(content.replace("#{VERIFY_COMMAND_TEXT}", command)).setStyle(sibling.getStyle());
             sibling.getSiblings().forEach(tmp::append);
             return tmp;
         });
@@ -293,7 +295,7 @@ public class RPAWhitelist implements DedicatedServerModInitializer {
         Long code = event.getOptionAsLong("code").orElse(null);
 
         AtomicReference<UUID> uuidRef = new AtomicReference<>();
-        this.minecraftServer.submitAndJoin(() -> uuidRef.set(ServerConfigHandler.getPlayerUuidByName(this.minecraftServer, username)));
+        this.minecraftServer.executeBlocking(() -> uuidRef.set(OldUsersConverter.convertMobOwnerIfNecessary(this.minecraftServer, username)));
         UUID uuid = uuidRef.get();
         if (usercache.get(uuid) != null) {
             return verifyCommandResponse(event, member);

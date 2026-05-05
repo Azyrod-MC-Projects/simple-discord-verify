@@ -3,7 +3,7 @@
   "package": "com.azyrod.rpa_whitelist.mixins.invokers",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "ServerConfigListInvoker"
+    "StoredUserListInvoker"
   ],
   "injectors": {
     "defaultRequire": 1

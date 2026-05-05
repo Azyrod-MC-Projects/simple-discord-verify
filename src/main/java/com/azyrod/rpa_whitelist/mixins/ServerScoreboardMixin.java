@@ -4,11 +4,11 @@ import com.azyrod.rpa_whitelist.RPAWhitelist;
 import com.google.common.collect.ImmutableBiMap;
 import discord4j.common.util.Snowflake;
 import discord4j.core.object.entity.Member;
-import net.minecraft.scoreboard.Scoreboard;
-import net.minecraft.scoreboard.ServerScoreboard;
-import net.minecraft.scoreboard.Team;
+import net.minecraft.world.scores.Scoreboard;
+import net.minecraft.server.ServerScoreboard;
+import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
 import org.reactivestreams.Publisher;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -28,25 +28,25 @@ public abstract class ServerScoreboardMixin extends Scoreboard {
     private static final ImmutableBiMap<String, Snowflake> team_role_map = new ImmutableBiMap.Builder<String, Snowflake>()
             .build();
 
-    @Inject(method = "addScoreHolderToTeam(Ljava/lang/String;Lnet/minecraft/scoreboard/Team;)Z", at = @At("HEAD"))
-    public void onAddScoreHolderToTeam(String scoreHolderName, Team new_team, CallbackInfoReturnable<Boolean> cir) {
+    @Inject(method = "addPlayerToTeam(Ljava/lang/String;Lnet/minecraft/world/scores/PlayerTeam;)Z", at = @At("HEAD"))
+    public void onAddScoreHolderToTeam(String scoreHolderName, PlayerTeam new_team, CallbackInfoReturnable<Boolean> cir) {
         RPAWhitelist rpa = RPAWhitelist.INSTANCE;
         if (true) { // Disabling this Team logic
             return;
         }
 
-        ServerPlayerEntity player = this.server.getPlayerManager().getPlayer(scoreHolderName);
+        ServerPlayer player = this.server.getPlayerList().getPlayerByName(scoreHolderName);
         if (player == null) {
             RPAWhitelist.LOGGER.warn("Couldn't get player from scoreHolder '{}' - Not a Player ?", scoreHolderName);
             return;
         }
-        Snowflake player_id = rpa.usercache.get(player.getUuid());
+        Snowflake player_id = rpa.usercache.get(player.getUUID());
         if (player_id == null) {
-            RPAWhitelist.LOGGER.error("Couldn't get Discord ID for Player '{}' - NOT SUPPOSED TO HAPPEN", player.getUuid());
+            RPAWhitelist.LOGGER.error("Couldn't get Discord ID for Player '{}' - NOT SUPPOSED TO HAPPEN", player.getUUID());
             return;
         }
 
-        Team previous_team = this.getScoreHolderTeam(scoreHolderName);
+        PlayerTeam previous_team = this.getPlayersTeam(scoreHolderName);
         Snowflake previous_role_id;
         Snowflake new_role_id = team_role_map.get(new_team.getName());
         if (previous_team != null) {

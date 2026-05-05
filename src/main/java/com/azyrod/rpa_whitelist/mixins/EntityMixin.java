@@ -4,8 +4,8 @@ import com.azyrod.rpa_whitelist.RPAWhitelist;
 import com.google.common.collect.ImmutableMap;
 import discord4j.common.util.Snowflake;
 import discord4j.core.object.entity.Member;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
 import org.reactivestreams.Publisher;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -27,10 +27,10 @@ public abstract class EntityMixin {
     private void handleTag(String tag, boolean remove) {
         RPAWhitelist rpa = RPAWhitelist.INSTANCE;
 
-        if ((Object)this instanceof PlayerEntity player) {
-            Snowflake player_id = rpa.usercache.get(player.getUuid());
+        if ((Object)this instanceof Player player) {
+            Snowflake player_id = rpa.usercache.get(player.getUUID());
             if (player_id == null) {
-                RPAWhitelist.LOGGER.error("Couldn't get Discord ID for Player '{}' - NOT SUPPOSED TO HAPPEN (Or player is OP and didn't verify)", player.getUuid());
+                RPAWhitelist.LOGGER.error("Couldn't get Discord ID for Player '{}' - NOT SUPPOSED TO HAPPEN (Or player is OP and didn't verify)", player.getUUID());
                 return;
             }
 
@@ -47,12 +47,12 @@ public abstract class EntityMixin {
         }
     }
 
-    @Inject(method = "addCommandTag(Ljava/lang/String;)Z", at = @At("HEAD"))
+    @Inject(method = "addTag(Ljava/lang/String;)Z", at = @At("HEAD"))
     public void onAddCommandTag(String tag, CallbackInfoReturnable<Boolean> cir) {
         handleTag(tag, false);
     }
 
-    @Inject(method = "removeCommandTag(Ljava/lang/String;)Z", at = @At("HEAD"))
+    @Inject(method = "removeTag(Ljava/lang/String;)Z", at = @At("HEAD"))
     public void onRemoveCommandTag(String tag, CallbackInfoReturnable<Boolean> cir) {
         handleTag(tag, true);
     }

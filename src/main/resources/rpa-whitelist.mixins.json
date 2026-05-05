@@ -5,7 +5,7 @@
   "mixins": [
     "EntityMixin",
     "MinecraftServerMixin",
-    "PlayerManagerMixin",
+    "PlayerListMixin",
     "ServerScoreboardMixin"
   ],
   "injectors": {

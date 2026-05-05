@@ -2,13 +2,18 @@ package com.azyrod.rpa_whitelist.mixins;
 
 import com.azyrod.rpa_whitelist.RPAWhitelist;
 import com.azyrod.rpa_whitelist.config.DiscordUserCache;
-import com.azyrod.rpa_whitelist.mixins.invokers.ServerConfigListInvoker;
+import com.azyrod.rpa_whitelist.mixins.invokers.StoredUserListInvoker;
 import discord4j.common.util.Snowflake;
-import net.minecraft.network.ClientConnection;
+import net.minecraft.network.Connection;
 import net.minecraft.server.*;
-import net.minecraft.server.network.ConnectedClientData;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Text;
+import net.minecraft.server.network.CommonListenerCookie;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.players.NameAndId;
+import net.minecraft.server.players.PlayerList;
+import net.minecraft.server.players.ServerOpList;
+import net.minecraft.server.players.UserWhiteList;
+import net.minecraft.server.players.UserWhiteListEntry;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -22,25 +27,25 @@ import java.net.SocketAddress;
 import java.util.List;
 import java.util.UUID;
 
-@Mixin(value = PlayerManager.class, priority = Integer.MIN_VALUE)
-public abstract class PlayerManagerMixin {
+@Mixin(value = PlayerList.class, priority = Integer.MIN_VALUE)
+public abstract class PlayerListMixin {
     @Final
     @Shadow
-    private OperatorList ops;
+    private ServerOpList ops;
     @Final
     @Shadow
-    private Whitelist whitelist;
+    private UserWhiteList whitelist;
     @Final
     @Shadow
     private MinecraftServer server;
 
     @Shadow
-    public abstract boolean isWhitelistEnabled();
+    public abstract boolean isUsingWhitelist();
 
-    @Shadow @Final private List<ServerPlayerEntity> players;
+    @Shadow @Final private List<ServerPlayer> players;
 
-    @Inject(method = "checkCanJoin(Ljava/net/SocketAddress;Lnet/minecraft/server/PlayerConfigEntry;)Lnet/minecraft/text/Text;", at = @At("HEAD"), cancellable = true)
-    public void checkCanJoin(SocketAddress socketAddress, PlayerConfigEntry playerConfigEntry, CallbackInfoReturnable<Text> cir) {
+    @Inject(method = "canPlayerLogin(Ljava/net/SocketAddress;Lnet/minecraft/server/players/NameAndId;)Lnet/minecraft/network/chat/Component;", at = @At("HEAD"), cancellable = true)
+    public void checkCanJoin(SocketAddress socketAddress, NameAndId playerConfigEntry, CallbackInfoReturnable<Component> cir) {
         if (this.isModDisabled() || shouldBypassLogic(playerConfigEntry)) {
             return; // Let MC use the default whitelist logic
         }
@@ -48,7 +53,7 @@ public abstract class PlayerManagerMixin {
         RPAWhitelist rpa = RPAWhitelist.INSTANCE;
         UUID uuid = playerConfigEntry.id();
         Snowflake id = rpa.usercache.get(uuid);
-        Text disconnectReason = this.checkPlayerHasAccess(playerConfigEntry, id);
+        Component disconnectReason = this.checkPlayerHasAccess(playerConfigEntry, id);
 
         if (disconnectReason != null) {
             cir.setReturnValue(disconnectReason);
@@ -59,32 +64,32 @@ public abstract class PlayerManagerMixin {
             return;
         }
 
-        this.whitelist.add(new WhitelistEntry(playerConfigEntry));
+        this.whitelist.add(new UserWhiteListEntry(playerConfigEntry));
 
         rpa.enqueueRoleUpdate(uuid, id, (discordUserRecord -> {
             if (!rpa.userHasDiscordRole(discordUserRecord)) {
-                this.server.submitAndJoin(() -> {
+                this.server.executeBlocking(() -> {
                     this.whitelist.remove(playerConfigEntry);
 
-                    this.players.stream().filter(player_entity -> player_entity.getUuid() == uuid)
+                    this.players.stream().filter(player_entity -> player_entity.getUUID() == uuid)
                             .findFirst().ifPresent(serverPlayerEntity -> {
-                                serverPlayerEntity.networkHandler.disconnect(rpa.config.values.messages.minecraft.getMissingRoleText());
+                                serverPlayerEntity.connection.disconnect(rpa.config.values.messages.minecraft.getMissingRoleText());
                             });
                 });
             }
         })).subscribe();
     }
 
-    @Inject(method = "onPlayerConnect", at = @At("TAIL"), cancellable = true)
-    public void onPlayerConnect(ClientConnection connection, ServerPlayerEntity player, ConnectedClientData clientData, CallbackInfo ci) {
-        PlayerConfigEntry playerConfigEntry = player.getPlayerConfigEntry();
+    @Inject(method = "placeNewPlayer", at = @At("TAIL"), cancellable = true)
+    public void onPlayerConnect(Connection connection, ServerPlayer player, CommonListenerCookie clientData, CallbackInfo ci) {
+        NameAndId playerConfigEntry = player.nameAndId();
         if (this.isModDisabled() || shouldBypassLogic(playerConfigEntry)) {
             return;
         }
 
         RPAWhitelist rpa = RPAWhitelist.INSTANCE;
-        Snowflake id = rpa.usercache.get(player.getUuid());
-        Text disconnectReason = this.checkPlayerHasAccess(playerConfigEntry, id);
+        Snowflake id = rpa.usercache.get(player.getUUID());
+        Component disconnectReason = this.checkPlayerHasAccess(playerConfigEntry, id);
 
         if (disconnectReason != null) {
             connection.disconnect(disconnectReason);
@@ -93,7 +98,7 @@ public abstract class PlayerManagerMixin {
     }
 
     @Unique
-    private Text checkPlayerHasAccess(PlayerConfigEntry playerConfigEntry, Snowflake id) {
+    private Component checkPlayerHasAccess(NameAndId playerConfigEntry, Snowflake id) {
         RPAWhitelist rpa = RPAWhitelist.INSTANCE;
 
         if (id == null) {
@@ -121,8 +126,8 @@ public abstract class PlayerManagerMixin {
     }
 
     @Unique
-    private boolean shouldBypassLogic(PlayerConfigEntry playerConfigEntry) {
+    private boolean shouldBypassLogic(NameAndId playerConfigEntry) {
         // Without a whitelist anyone is allowed. OPs are always allowed
-        return !this.isWhitelistEnabled() || ((ServerConfigListInvoker) this.ops).callContains(playerConfigEntry);
+        return !this.isUsingWhitelist() || ((StoredUserListInvoker) this.ops).callContains(playerConfigEntry);
     }
 }
